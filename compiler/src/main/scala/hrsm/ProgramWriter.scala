@@ -2,7 +2,6 @@ package hrsm
 
 import java.io.{File, FileWriter, BufferedWriter}
 
-type Program = Array[Instruction]
 val identation = "    "
 
 extension (arg: Argument) {
