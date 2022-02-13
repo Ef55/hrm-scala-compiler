@@ -92,6 +92,8 @@ def hraImpl(expr: Expr[Any])(using Quotes): Expr[Program] =
       }
 
     override def transformTerm(t: Term)(owner: Symbol): Term = t match 
+      case Literal(UnitConstant()) => Expr(Nil).asTerm
+
       case Ident("inbox") => '{List[Instruction](Inbox)}.asTerm
       case Ident("outbox") => throw RuntimeException("Cannot access outbox value")
       case Ident("uninitialized") => Expr(Nil).asTerm
@@ -108,7 +110,6 @@ def hraImpl(expr: Expr[Any])(using Quotes): Expr[Program] =
         }.asTerm
 
 
-      //case Apply(Select(New(TypeIdent("Value")), _), _) => Expr(Nil).asTerm
       case Apply(Select(Ident(varName), methodName), List(Literal(IntConstant(1)))) => {
         methodName match 
           case "+=" => '{List[Instruction](BumpUp(Immediate(${getVar(varName)})))}

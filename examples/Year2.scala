@@ -1,10 +1,9 @@
 import hrsm.*
 import builtins.*
 
-@main def year2: Unit =
-  val program = hrassembly {
+@main
+def year02: Unit =
+  Year(2){
     while true do
       outbox = inbox
   }
-
-  println(print(program))
