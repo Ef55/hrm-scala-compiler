@@ -11,6 +11,5 @@ def year12: Unit =
       r = r + r // 4
       i8 = r + r 
       r = i8 + i8 // 16
-      r = r + r // 32
-      outbox = r + i8
+      outbox = r + r + i8
   }

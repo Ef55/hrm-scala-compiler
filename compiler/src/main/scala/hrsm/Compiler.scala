@@ -22,26 +22,47 @@ def compile(code: AST.Tree): MC.Program =
 
   def getVar(name: String): ConcreteValue = variables(name)
 
-
+  var register: Option[ConcreteValue] = None
 
   def rec(code: AST.Tree): MC.Program = code match
     case AST.Sequence(nodes) => nodes.flatMap(rec(_))
     case AST.Define(id, init) => 
       val nv = defineVariable(id)
-      init match {
+      init match
         case None => List()
-        case Some(expr) => rec(expr) :+ MC.CopyTo(Immediate(nv))
-      }
-    case AST.Assign(id, expr) => rec(expr) :+ MC.CopyTo(Immediate(getVar(id)))
-    case AST.Inbox => List(MC.Inbox)
-    case AST.Outbox(expr) => rec(expr) :+ MC.Outbox
-    case AST.Variable(id) => List(MC.CopyFrom(Immediate(getVar(id))))
+        case Some(expr) => rec(AST.Assign(id, expr))
+    case AST.Assign(id, expr) => 
+      val loc = getVar(id)
+      val r = rec(expr) :+ MC.CopyTo(Immediate(loc))
+      register = Some(loc)
+      r
+    case AST.Inbox => 
+      register = None
+      List(MC.Inbox)
+    case AST.Outbox(expr) => 
+      val r = rec(expr) :+ MC.Outbox
+      register = None
+      r
+    case AST.Variable(id) => 
+      val loc = getVar(id)
+      if register == Some(loc) then List()
+      else List(MC.CopyFrom(Immediate(loc)))
     case AST.Add(lhs, rhs) => 
-      rec(lhs) :+ MC.Add(Immediate(getVar(rhs)))
+      val r = rec(lhs) :+ MC.Add(Immediate(getVar(rhs)))
+      register = None
+      r
     case AST.Sub(lhs, rhs) => 
-      rec(lhs) :+ MC.Sub(Immediate(getVar(rhs)))
-    case AST.BumpUp(id) => List(MC.BumpUp(Immediate(getVar(id))))
-    case AST.BumpDown(id) => List(MC.BumpDown(Immediate(getVar(id))))
+      val r = rec(lhs) :+ MC.Sub(Immediate(getVar(rhs)))
+      register = None
+      r
+    case AST.BumpUp(id) => 
+      val loc = getVar(id)
+      register = Some(loc)
+      List(MC.BumpUp(Immediate(loc)))
+    case AST.BumpDown(id) => 
+      val loc = getVar(id)
+      register = Some(loc)
+      List(MC.BumpDown(Immediate(loc)))
     case AST.Loop(body) => 
       val lbl = freshLabel
       MC.Label(lbl) +: rec(body) :+ MC.Jump(lbl)
