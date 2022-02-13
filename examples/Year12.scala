@@ -1,5 +1,4 @@
-import hrsm.*
-import builtins.*
+import hrsm.Language.*
 
 @main
 def year12: Unit =

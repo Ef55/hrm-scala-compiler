@@ -1,5 +1,8 @@
 package hrsm
 
+import MachineCode.*
+import Arguments.*
+
 import java.io.{File, FileWriter, BufferedWriter}
 
 val identation = "    "
