@@ -66,6 +66,21 @@ def compile(code: AST.Tree): MC.Program =
     case AST.Loop(body) => 
       val lbl = freshLabel
       MC.Label(lbl) +: rec(body) :+ MC.Jump(lbl)
+    case AST.Ite(cond, comp, thenn, None) => comp match 
+      case Comparator.Neq => 
+        val end = freshLabel
+        val r = rec(cond) ++ ( MC.JumpZ(end) +: rec(thenn) ) :+ MC.Label(end)
+        register = None
+        r
+      case Comparator.Eq => 
+        val start = freshLabel
+        val end = freshLabel
+        val r = rec(cond) ++ ( MC.JumpZ(start) +: MC.Jump(end) +: MC.Label(start) +: rec(thenn) ) :+ MC.Label(end)
+        register = None
+        r
+      
+    case AST.Ite(cond, comp, thenn, Some(elze)) =>
+      ???
 
 
   rec(code)

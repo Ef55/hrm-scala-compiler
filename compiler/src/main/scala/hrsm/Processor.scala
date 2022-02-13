@@ -11,6 +11,11 @@ given ValueToExpr: ToExpr[ConcreteValue] with {
     '{ConcreteValue(${summon[ToExpr[Int]].apply(v.i)})}
 }
 
+given ComparatorToExpr: ToExpr[Comparator] with {
+  def apply(cmp: Comparator)(using Quotes): Expr[Comparator] =
+    '{Comparator.fromOrdinal(${Expr(cmp.ordinal)})}
+}
+
 inline def hrprocessor(inline expr: Any): AST.Tree = ${processorImpl('expr)}
 
 def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
@@ -23,16 +28,23 @@ def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
 
         case ValDef(name, tt, Some(init)) => 
           if(tt.tpe =:= TypeRepr.of[Value]) then
-            init match {
+            init match
               case Ident("uninitialized") => '{AST.Define(${Expr(name)}, None)}.asTerm
               case _ => '{ 
                 AST.Define(${Expr(name)}, Some(${transformTerm(init)(owner).asExprOf[AST.Tree]}))
               }.asTerm
-            }
           else throw RuntimeException(s"Unsupported type: ${tt.tpe.show} (expected: ${TypeRepr.of[Value].show})")
 
         case s => throw RuntimeException(s"Unsupported statement: ${s.getClass}")
       }
+
+    def transformCondition(t: Term)(owner: Symbol): (Comparator, Term) = t match 
+      case Apply(Select(lhs, comp), List(Literal(IntConstant(0)))) => comp match 
+        case "==" => (Comparator.Eq, lhs)
+        case "!=" => (Comparator.Neq, lhs)
+        case _ => throw RuntimeException(s"Unsupported comparator: ${comp}")
+
+      case _ => throw RuntimeException(s"Unsupported condition: ${Printer.TreeStructure.show(t)}")
 
     override def transformTerm(t: Term)(owner: Symbol): Term = t match 
       //case Literal(UnitConstant()) => Expr(Nil).asTerm
@@ -73,6 +85,17 @@ def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
         val tBody = transformTerm(body)(owner)
         '{ 
           AST.Loop(${tBody.asExprOf[AST.Tree]})
+        }.asTerm
+
+      case If(cond, thenn, elze) => 
+        val (comp, tCond) = transformCondition(cond)(owner)
+        val tThen = transformTerm(thenn)(owner).asExprOf[AST.Tree]
+        val tElse = elze match {
+          case Literal(UnitConstant()) => Expr(None)
+          case _ => '{Some(${transformTerm(elze)(owner).asExprOf[AST.Tree]})}
+        }
+        '{ 
+          AST.Ite(${transformTerm(tCond)(owner).asExprOf[AST.Tree]}, ${Expr(comp)}, ${tThen}, ${tElse}) 
         }.asTerm
 
       case Inlined(_, _, code) => 

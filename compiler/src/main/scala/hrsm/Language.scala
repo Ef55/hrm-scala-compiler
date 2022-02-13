@@ -7,15 +7,26 @@ object Arguments {
   trait Argument
   case class Immediate(valueIndex: Value) extends Argument
   case class Indirect(addressIndex: Value) extends Argument
+
+  enum Comparator:
+    case Eq
+    case Neq
+    //case Less
+    //case Geq
 }
 
 object Language {
   sealed trait Value {
 
+    def +(v: Value): Value = ???
+    def -(v: Value): Value = ???
+
     def +=(one: 1): Value = ???
     def -=(one: 1): Value = ???
 
-    def +(v: Value): Value = ???
+    def ==(zero: 0): Boolean = ???
+    def !=(zero: 0): Boolean = ???
+    def <(zero: 0): Boolean = ???
 
     override def toString: String = ???
   }
@@ -48,6 +59,7 @@ object AST {
   case class BumpUp(id: Identifier) extends Tree
   case class BumpDown(id: Identifier) extends Tree
   case class Loop(body: Tree) extends Tree
+  case class Ite(cond: Tree, comp: Comparator, thenn: Tree, elze: Option[Tree]) extends Tree
 }
 
 object MachineCode {

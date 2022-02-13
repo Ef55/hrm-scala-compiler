@@ -1,5 +1,8 @@
 import hrsm.Language.*
 
+// Statement: Output the input multiplied by 40
+// Solve both optimization challenges
+
 @main
 def year12: Unit =
   Year(12){
