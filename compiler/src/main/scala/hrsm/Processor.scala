@@ -42,12 +42,14 @@ def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
       case Apply(Select(lhs, comp), List(Literal(IntConstant(0)))) => comp match 
         case "==" => (Comparator.Eq, lhs)
         case "!=" => (Comparator.Neq, lhs)
+        case "<" => (Comparator.Less, lhs)
+        case ">=" => (Comparator.Geq, lhs)
         case _ => throw RuntimeException(s"Unsupported comparator: ${comp}")
 
       case _ => throw RuntimeException(s"Unsupported condition: ${Printer.TreeStructure.show(t)}")
 
     override def transformTerm(t: Term)(owner: Symbol): Term = t match 
-      //case Literal(UnitConstant()) => Expr(Nil).asTerm
+      //case Literal(UnitConstant()) => // Empty program
 
       case Ident("inbox") => '{ AST.Inbox }.asTerm
       case Ident("outbox") => throw RuntimeException("Cannot access outbox value")

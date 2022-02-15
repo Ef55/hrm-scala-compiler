@@ -11,8 +11,15 @@ object Arguments {
   enum Comparator:
     case Eq
     case Neq
-    //case Less
-    //case Geq
+    case Less
+    case Geq
+
+  extension (cmp: Comparator)
+    def invert: Comparator = cmp match 
+      case Comparator.Eq => Comparator.Neq
+      case Comparator.Neq => Comparator.Eq
+      case Comparator.Less => Comparator.Geq
+      case Comparator.Geq => Comparator.Less
 }
 
 object Language {
@@ -27,6 +34,7 @@ object Language {
     def ==(zero: 0): Boolean = ???
     def !=(zero: 0): Boolean = ???
     def <(zero: 0): Boolean = ???
+    def >=(zero: 0): Boolean = ???
 
     override def toString: String = ???
   }
