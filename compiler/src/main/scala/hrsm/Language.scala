@@ -36,6 +36,11 @@ object Language {
     def <(zero: 0): Boolean = ???
     def >=(zero: 0): Boolean = ???
 
+    def ==(v: Value): Boolean = ???
+    def !=(v: Value): Boolean = ???
+    def <(v: Value): Boolean = ???
+    def >=(v: Value): Boolean = ???
+
     override def toString: String = ???
   }
 

@@ -95,7 +95,7 @@ def compile(code: AST.Tree): MC.Program =
 
         val start = freshLabel
         val end = freshLabel
-        val r = rec(cond) ++ ( jump(start) +: MC.Jump(end) +: MC.Label(start) +: rec(thenn) ) :+ MC.Label(end)
+        val r = ( rec(cond) :+ jump(start) :+ MC.Jump(end) :+ MC.Label(start) ) ++ rec(thenn) :+ MC.Label(end)
         register = None
         r
       
@@ -106,9 +106,14 @@ def compile(code: AST.Tree): MC.Program =
 
         val mid = freshLabel
         val end = freshLabel
-        val r = rec(cond) ++ ( jump(mid) +: rec(elze) :+ MC.Jump(end) ) ++ ( MC.Label(mid) +: rec(thenn) :+ MC.Label(end) )
+
+        val condMc = rec(cond)
+        val regState = register
+        val thenMc = ( jump(mid) +: rec(elze) :+ MC.Jump(end) )
+        register = regState
+        val elseMc = ( MC.Label(mid) +: rec(thenn) :+ MC.Label(end) )
         register = None
-        r
+        condMc ++ thenMc ++ elseMc
 
 
   rec(code)

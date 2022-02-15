@@ -21,6 +21,9 @@ inline def hrprocessor(inline expr: Any): AST.Tree = ${processorImpl('expr)}
 def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
   import quotes.reflect.*
 
+  lazy val reservedNames = Set("inbox", "outbox", "uninitialized")
+  def isReserved(id: Identifier) = reservedNames.contains(id)
+
   object transform extends TreeMap {
     override def transformStats(ls: List[Statement])(owner: Symbol): List[Statement] = 
       ls.map {
@@ -38,13 +41,21 @@ def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
         case s => throw RuntimeException(s"Unsupported statement: ${s.getClass}")
       }
 
-    def transformCondition(t: Term)(owner: Symbol): (Comparator, Term) = t match 
-      case Apply(Select(lhs, comp), List(Literal(IntConstant(0)))) => comp match 
-        case "==" => (Comparator.Eq, lhs)
-        case "!=" => (Comparator.Neq, lhs)
-        case "<" => (Comparator.Less, lhs)
-        case ">=" => (Comparator.Geq, lhs)
-        case _ => throw RuntimeException(s"Unsupported comparator: ${comp}")
+    def transformCondition(t: Term)(owner: Symbol): (Comparator, Expr[AST.Tree]) = t match 
+      case Apply(Select(lhs, comp), List(rhs)) => 
+        val cmp = comp match 
+          case "==" => Comparator.Eq
+          case "!=" => Comparator.Neq
+          case "<" => Comparator.Less
+          case ">=" => Comparator.Geq
+          case _ => throw RuntimeException(s"Unsupported comparator: ${comp}")
+
+        val l = rhs match 
+          case Literal(IntConstant(0)) => transformTerm(lhs)(owner).asExprOf[AST.Tree]
+          case Ident(name) if !reservedNames(name) => '{ AST.Sub( ${transformTerm(lhs)(owner).asExprOf[AST.Tree]}, ${Expr(name)}) }
+          case _ => throw RuntimeException(s"Unsupported right-hand-side: ${Printer.TreeStructure.show(rhs)}")
+
+        (cmp, l.asExprOf[AST.Tree])
 
       case _ => throw RuntimeException(s"Unsupported condition: ${Printer.TreeStructure.show(t)}")
 
@@ -54,7 +65,9 @@ def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
       case Ident("inbox") => '{ AST.Inbox }.asTerm
       case Ident("outbox") => throw RuntimeException("Cannot access outbox value")
       case Ident("uninitialized") => throw RuntimeException("Cannot access uninitialized value")
-      case Ident(varName) => '{ AST.Variable(${Expr(varName)}) }.asTerm
+      case Ident(varName) => 
+        assert(!isReserved(varName))
+        '{ AST.Variable(${Expr(varName)}) }.asTerm
 
       case Assign(Ident("outbox"), expr) => 
         '{ AST.Outbox(${transformTerm(expr)(owner).asExprOf[AST.Tree]}) }.asTerm
@@ -97,7 +110,7 @@ def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
           case _ => '{Some(${transformTerm(elze)(owner).asExprOf[AST.Tree]})}
         }
         '{ 
-          AST.Ite(${transformTerm(tCond)(owner).asExprOf[AST.Tree]}, ${Expr(comp)}, ${tThen}, ${tElse}) 
+          AST.Ite(${tCond}, ${Expr(comp)}, ${tThen}, ${tElse}) 
         }.asTerm
 
       case Inlined(_, _, code) => 
