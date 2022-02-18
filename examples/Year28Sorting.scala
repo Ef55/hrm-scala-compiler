@@ -4,27 +4,23 @@ import hrsm.Language.*
 
 @main
 def year28Sorting: Unit =
-  Year(28){
-    var fst = uninitialized
-    var snd = uninitialized
-    var trd = uninitialized
-    var tmp = uninitialized
+  Year(28)(10){
     while true do
-      fst = inbox
-      snd = inbox
-      trd = inbox
+      var fst = inbox
+      var snd = inbox
+      var trd = inbox
 
       if snd < fst then
-        tmp = fst
+        val tmp = fst
         fst = snd
         snd = tmp
 
       if trd < snd then
-        tmp = trd
+        val tmp = trd
         trd = snd
         snd = tmp
         if snd < fst then
-          tmp = fst
+          val tmp = fst
           fst = snd
           snd = tmp
       

@@ -5,7 +5,7 @@ import hrsm.Language.*
 
 @main
 def year02: Unit =
-  Year(2){
+  Year(2)(0){
     while true do
       outbox = inbox
   }

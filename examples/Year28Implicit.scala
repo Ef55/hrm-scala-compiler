@@ -4,15 +4,11 @@ import hrsm.Language.*
 
 @main
 def year28Implicit: Unit =
-  Year(28){
-    var fst = uninitialized
-    var snd = uninitialized
-    var trd = uninitialized
-    var tmp = uninitialized
+  Year(28)(10){
     while true do
-      fst = inbox
-      snd = inbox
-      trd = inbox
+      val fst = inbox
+      val snd = inbox
+      val trd = inbox
 
       if fst < snd then
         if snd < trd then

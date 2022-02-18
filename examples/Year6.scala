@@ -5,9 +5,8 @@ import hrsm.Language.*
 
 @main
 def year06: Unit =
-  Year(6){
-    var toAdd = uninitialized
+  Year(6)(3){
     while true do
-      toAdd = inbox
+      val toAdd = inbox
       outbox = inbox + toAdd
   }

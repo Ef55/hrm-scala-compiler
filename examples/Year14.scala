@@ -4,13 +4,11 @@ import hrsm.Language.*
 
 @main
 def year14: Unit =
-  Year(14){
-    var f = uninitialized
-    var s = uninitialized
+  Year(14)(3){
     while true do
-      f = inbox
-      s = inbox
-      if s - f < 0 then
+      val f = inbox
+      val s = inbox
+      if s < f then
         outbox = f
       else
         outbox = s

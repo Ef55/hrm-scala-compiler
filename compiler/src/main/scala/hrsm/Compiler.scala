@@ -4,25 +4,33 @@ import Arguments.*
 import Language.*
 import hrsm.{MachineCode as MC}
 
-import scala.collection.mutable.Map
+import scala.collection.mutable.{SortedSet, Map}
 
-def compile(code: AST.Tree): MC.Program = 
+def compile(code: AST.Tree)(memorySize: Int): MC.Program = 
 
   var lastLabel = -1
   def freshLabel: Identifier =
     lastLabel += 1
     s"l${lastLabel}"
 
+  var freeMemory = SortedSet.from[Int](0 until memorySize)
+  def memorySnapshot[T](expr: => T): T =
+    val snapshot = SortedSet.from(freeMemory)
+    val r = expr
+    freeMemory = snapshot
+    r
+
   val variables = Map.empty[String, ConcreteValue]
-  var lastVar = -1
   def defineVariable(name: String): ConcreteValue =
-    lastVar += 1
-    variables += (name -> ConcreteValue(lastVar))
+    val newVar = freeMemory.head
+    freeMemory -= newVar
+    variables += (name -> ConcreteValue(newVar))
     getVar(name)
 
   def getVar(name: String): ConcreteValue = variables(name)
 
   var register: Option[ConcreteValue] = None
+
 
   def getJump(cmp: Comparator): Identifier => MC.Instruction = 
     cmp match 
@@ -30,7 +38,10 @@ def compile(code: AST.Tree): MC.Program =
       case Comparator.Less | Comparator.Geq => MC.JumpN(_)
 
   def rec(code: AST.Tree): MC.Program = code match
-    case AST.Sequence(nodes) => nodes.flatMap(rec(_))
+    case AST.Sequence(nodes) => 
+      memorySnapshot{
+        nodes.flatMap(rec(_))
+      }
 
     case AST.Define(id, init) => 
       val nv = defineVariable(id)
@@ -85,9 +96,11 @@ def compile(code: AST.Tree): MC.Program =
     case AST.Ite(cond, comp, thenn, None) => comp match 
       case Comparator.Neq | Comparator.Geq => 
         val jump = getJump(comp)
-
+        val mem = freeMemory
         val end = freshLabel
-        val r = rec(cond) ++ ( jump(end) +: rec(thenn) ) :+ MC.Label(end)
+        val r = memorySnapshot{
+          rec(cond) ++ ( jump(end) +: rec(thenn) ) :+ MC.Label(end)
+        }
         register = None
         r
       case Comparator.Eq | Comparator.Less => 
@@ -95,7 +108,9 @@ def compile(code: AST.Tree): MC.Program =
 
         val start = freshLabel
         val end = freshLabel
-        val r = ( rec(cond) :+ jump(start) :+ MC.Jump(end) :+ MC.Label(start) ) ++ rec(thenn) :+ MC.Label(end)
+        val r = memorySnapshot {
+          ( rec(cond) :+ jump(start) :+ MC.Jump(end) :+ MC.Label(start) ) ++ rec(thenn) :+ MC.Label(end)
+        }
         register = None
         r
       
@@ -107,11 +122,19 @@ def compile(code: AST.Tree): MC.Program =
         val mid = freshLabel
         val end = freshLabel
 
-        val condMc = rec(cond)
+        val condMc = memorySnapshot{
+          rec(cond)
+        }
         val regState = register
-        val thenMc = ( jump(mid) +: rec(elze) :+ MC.Jump(end) )
+
+        val thenMc = memorySnapshot{
+          ( jump(mid) +: rec(elze) :+ MC.Jump(end) )
+        }
         register = regState
-        val elseMc = ( MC.Label(mid) +: rec(thenn) :+ MC.Label(end) )
+
+        val elseMc = memorySnapshot{
+          ( MC.Label(mid) +: rec(thenn) :+ MC.Label(end) )
+        }
         register = None
         condMc ++ thenMc ++ elseMc
 
