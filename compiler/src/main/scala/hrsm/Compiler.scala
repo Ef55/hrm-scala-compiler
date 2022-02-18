@@ -4,16 +4,27 @@ import Arguments.*
 import Language.*
 import hrsm.{MachineCode as MC}
 
+import scala.collection.immutable.{Map => IMap}
 import scala.collection.mutable.{SortedSet, Map}
 
-def compile(code: AST.Tree)(memorySize: Int): MC.Program = 
+def compile(code: AST.Tree)(config: Configuration): MC.Program = 
+
+  def createConstantsMap(mem: IMap[Int, Int]): Map[ConcreteValue, ConcreteValue] = 
+    val r = Map.empty[ConcreteValue, ConcreteValue]
+    config.init.foreach{(k, v) =>
+      r += (ConcreteValue(v) -> ConcreteValue(k))
+    }
+    r
+  val constants = createConstantsMap(config.init)
+  println(config.init)
+  println(constants)
 
   var lastLabel = -1
   def freshLabel: Identifier =
     lastLabel += 1
     s"l${lastLabel}"
 
-  var freeMemory = SortedSet.from[Int](0 until memorySize)
+  var freeMemory = SortedSet.from[Int](0 until config.memorySize) &~ config.init.keySet
   def memorySnapshot[T](expr: => T): T =
     val snapshot = SortedSet.from(freeMemory)
     val r = expr
@@ -68,6 +79,11 @@ def compile(code: AST.Tree)(memorySize: Int): MC.Program =
       val loc = getVar(id)
       if register == Some(loc) then List()
       else List(MC.CopyFrom(Immediate(loc)))
+
+    case AST.Constant(v) =>
+      constants.get(v) match 
+        case Some(i) => List(MC.CopyFrom(Immediate(i)))
+        case None => throw RuntimeException(s"Unavailable constant: ${v.i}")
 
     case AST.Add(lhs, rhs) => 
       val r = rec(lhs) :+ MC.Add(Immediate(getVar(rhs)))

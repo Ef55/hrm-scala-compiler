@@ -60,7 +60,8 @@ def processorImpl(expr: Expr[Any])(using Quotes): Expr[AST.Tree] =
       case _ => throw RuntimeException(s"Unsupported condition: ${Printer.TreeStructure.show(t)}")
 
     override def transformTerm(t: Term)(owner: Symbol): Term = t match 
-      //case Literal(UnitConstant()) => // Empty program
+      case Apply(Select(Ident("intToValue"), "apply"), List(Literal(IntConstant(i)))) => 
+        '{ AST.Constant(ConcreteValue(${Expr(i)})) }.asTerm
 
       case Ident("inbox") => '{ AST.Inbox }.asTerm
       case Ident("outbox") => throw RuntimeException("Cannot access outbox value")

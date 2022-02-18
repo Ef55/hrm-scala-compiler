@@ -1,5 +1,7 @@
 package hrsm
 
-case class Configuration(memorySize: Int)
+import scala.collection.immutable.Map
 
-inline def hrassembly(inline expr: Any)(using config: Configuration): MachineCode.Program = compile(hrprocessor(expr))(config.memorySize)
+case class Configuration(memorySize: Int, init: Map[Int, Int])
+
+inline def hrassembly(inline expr: Any)(using config: Configuration): MachineCode.Program = compile(hrprocessor(expr))(config)

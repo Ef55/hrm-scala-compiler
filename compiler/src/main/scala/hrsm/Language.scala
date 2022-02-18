@@ -44,12 +44,15 @@ object Language {
     override def toString: String = ???
   }
 
-  sealed class ConcreteValue(val i: Int) extends Value {
+  sealed case class ConcreteValue(i: Int) extends Value {
     require((-999 to 999).contains(i))
 
     override def toString: String = i.toString
   }
-  
+
+  given intToValue: Conversion[Int, Value] with
+    def apply(i: Int): Value = ???
+
   val uninitialized: Value = ???
   val inbox: Value = ???
   var outbox: Value = ???
@@ -67,6 +70,7 @@ object AST {
   case object Inbox extends Tree
   case class Outbox(expr: Tree) extends Tree
   case class Variable(id: Identifier) extends Tree
+  case class Constant(i: Language.ConcreteValue) extends Tree
   case class Add(lhs: Tree, rhs: Identifier) extends Tree
   case class Sub(lhs: Tree, rhs: Identifier) extends Tree
   case class BumpUp(id: Identifier) extends Tree
