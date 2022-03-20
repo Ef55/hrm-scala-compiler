@@ -2,8 +2,8 @@ import org.scalatest.*
 import flatspec.*
 
 import hrsm.*
+import Language.{Immediate, Indirect, Literal}
 import MachineCode.*
-import Arguments.*
 
 class Tests extends AnyFlatSpec {
   def chop(str: String) = str.stripMargin.drop(1)
@@ -26,19 +26,19 @@ class Tests extends AnyFlatSpec {
     val program = Array(
       Inbox,
       Outbox,
-      CopyTo(Immediate(0)),
-      CopyFrom(Indirect(1)),
-      Add(Immediate(2)),
-      Sub(Indirect(3)),
-      BumpUp(Immediate(4)),
-      BumpDown(Indirect(5)),
+      CopyTo(Immediate(Literal(0))),
+      CopyFrom(Indirect(Literal(1))),
+      Add(Immediate(Literal(2))),
+      Sub(Indirect(Literal(3))),
+      BumpUp(Immediate(Literal(4))),
+      BumpDown(Indirect(Literal(5))),
       Jump("a"),
       JumpZ("zero"),
       JumpN("labelwhichiswaytoolong"),
       Label("lbl"),
     )
 
-    assertResult(expected)(print(program))
+    assertResult(expected)(printProgram(program))
   }
 
 }

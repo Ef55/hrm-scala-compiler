@@ -5,20 +5,24 @@ import hrsm.{MachineCode as MC}
 
 import scala.collection.immutable.{Map => IMap}
 import scala.collection.mutable.{SortedSet, Map}
+import hrsm.Language.Uninitialized
 
 def compile(code: AST.Tree[Any])(config: Configuration): MC.Program = 
-  def createConstantsMap(mem: IMap[Int, Int]): Map[ConcreteValue, ConcreteValue] = 
-    val r = Map.empty[ConcreteValue, ConcreteValue]
+  import AST.Literal
+  import AST.{Immediate, Indirect}
+
+  def createConstantsMap(mem: IMap[Int, Int]): Map[Literal, Literal] = 
+    val r = Map.empty[Literal, Literal]
     config.init.foreach{(k, v) =>
-      r += (ConcreteValue(v) -> ConcreteValue(k))
+      r += (Literal(v) -> Literal(k))
     }
     r
   val constants = createConstantsMap(config.init)
-  println(config.init)
-  println(constants)
+  // println(config.init)
+  // println(constants)
 
   var lastLabel = -1
-  def freshLabel: Identifier =
+  def freshLabel: String =
     lastLabel += 1
     s"l${lastLabel}"
 
@@ -29,27 +33,29 @@ def compile(code: AST.Tree[Any])(config: Configuration): MC.Program =
     freeMemory = snapshot
     r
 
-  val variables = Map.empty[String, ConcreteValue]
-  def defineVariable(name: String): ConcreteValue =
+  val variables = Map.empty[Identifier, Literal]
+  def defineVariable(name: Identifier): Literal =
     val newVar = freeMemory.head
     freeMemory -= newVar
-    variables += (name -> ConcreteValue(newVar))
+    variables += (name -> Literal(newVar))
     getVar(name)
 
-  def getVar(name: String): ConcreteValue = variables(name)
+  def getVar(name: Identifier): Literal = variables(name)
 
-  var register: Option[ConcreteValue] = None
+  var register: Option[Literal] = None
 
 
-  def getJump(cmp: Comparator): Identifier => MC.Instruction = 
+  def getJump(cmp: AST.Comparator): String => MC.Instruction = 
     cmp match 
-      case Comparator.Eq | Comparator.Neq => MC.JumpZ(_)
-      case Comparator.Less | Comparator.Geq => MC.JumpN(_)
+      case AST.Comparator.Eq | AST.Comparator.Neq => MC.JumpZ(_)
+      case AST.Comparator.Less | AST.Comparator.Geq => MC.JumpN(_)
 
-  def rec(code: AST.ArithTree): MC.Program = code match
-    case AST.Sequence(nodes) => 
+  def rec(code: AST.Tree[Any]): MC.Program = code match
+    case AST.Nop => List()
+
+    case AST.Sequence(nodes, last) => 
       memorySnapshot{
-        nodes.flatMap(rec(_))
+        (nodes :+ last).flatMap(rec(_))
       }
 
     case AST.Define(id, init) => 
@@ -73,15 +79,18 @@ def compile(code: AST.Tree[Any])(config: Configuration): MC.Program =
       register = None
       r
 
-    case AST.Variable(id) => 
+    case AST.UserVariable(id) => 
       val loc = getVar(id)
       if register == Some(loc) then List()
       else List(MC.CopyFrom(Immediate(loc)))
 
-    case AST.Constant(v) =>
-      constants.get(v) match 
+    case _: AST.Variable[Any] =>
+      throw Exception(s"Invalid use of built-in variable: ${code}")
+
+    case lit: AST.Literal =>
+      constants.get(lit) match 
         case Some(i) => List(MC.CopyFrom(Immediate(i)))
-        case None => throw RuntimeException(s"Unavailable constant: ${v.i}")
+        case None => throw Exception(s"Unavailable constant: ${lit.i}")
 
     case AST.Add(lhs, rhs) => 
       val r = rec(lhs) :+ MC.Add(Immediate(getVar(rhs)))
@@ -107,8 +116,8 @@ def compile(code: AST.Tree[Any])(config: Configuration): MC.Program =
       val lbl = freshLabel
       MC.Label(lbl) +: rec(body) :+ MC.Jump(lbl)
 
-    case AST.Ite(cond, comp, thenn, None) => comp match 
-      case Comparator.Neq | Comparator.Geq => 
+    case AST.Ite(cond, thenn, None) => cond match 
+      case AST.Cond(cond, comp@(AST.Comparator.Neq | AST.Comparator.Geq)) => 
         val jump = getJump(comp)
         val mem = freeMemory
         val end = freshLabel
@@ -117,7 +126,7 @@ def compile(code: AST.Tree[Any])(config: Configuration): MC.Program =
         }
         register = None
         r
-      case Comparator.Eq | Comparator.Less => 
+      case AST.Cond(cond, comp@(AST.Comparator.Eq | AST.Comparator.Less)) => 
         val jump = getJump(comp)
 
         val start = freshLabel
@@ -128,9 +137,10 @@ def compile(code: AST.Tree[Any])(config: Configuration): MC.Program =
         register = None
         r
       
-    case AST.Ite(cond, comp, thenn, Some(elze)) => comp match
-      case Comparator.Neq | Comparator.Geq => rec(AST.Ite(cond, comp.invert, elze, Some(thenn)))
-      case Comparator.Eq | Comparator.Less => 
+    case AST.Ite(cond, thenn, Some(elze)) => cond match
+      case AST.Cond(cond, comp@(AST.Comparator.Neq | AST.Comparator.Geq)) => 
+        rec(AST.Ite(AST.Cond(cond, comp.invert), elze, Some(thenn)))
+      case AST.Cond(cond, comp@(AST.Comparator.Eq | AST.Comparator.Less)) => 
         val jump = getJump(comp)
 
         val mid = freshLabel
@@ -152,5 +162,6 @@ def compile(code: AST.Tree[Any])(config: Configuration): MC.Program =
         register = None
         condMc ++ thenMc ++ elseMc
 
+    case AST.Uninitialized | AST.Cond(_, _) | AST.True => throw Exception(s"Invalid top-level boolean: ${code}")
 
   rec(code)

@@ -1,4 +1,5 @@
 import hrsm.Language.*
+import hrsm.hrprocessor.given
 
 // Statement: Output 0 if the two elements from the input pair have the same sign;
 //            else, output 1
@@ -6,7 +7,7 @@ import hrsm.Language.*
 @main
 def year17: Unit =
   Year(17)(5, memory(4 -> 0, 5 -> 1)){
-    while true do
+    while True do
       if inbox < 0 then
         if inbox < 0 then
           outbox = 0

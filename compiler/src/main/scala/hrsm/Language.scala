@@ -4,8 +4,8 @@ type Identifier = exproc.Identifier
 
 object Language {
   trait Argument
-  case class Immediate(valueIndex: Value) extends Argument
-  case class Indirect(addressIndex: Value) extends Argument
+  case class Immediate(valueIndex: Literal) extends Argument
+  case class Indirect(addressIndex: Literal) extends Argument
 
   enum Comparator:
     case Eq
@@ -21,58 +21,64 @@ object Language {
       case Comparator.Geq => Comparator.Less
 
   sealed trait Tree[+T]
+  case object Nop extends Tree[Unit]
   case class Sequence[+T](nodes: Seq[Tree[Any]], last: Tree[T]) extends Tree[T]
   case class Define[+T](id: Identifier, init: Option[Tree[T]]) extends Tree[Unit]
   case class Assign[+T](id: Identifier, expr: Tree[T]) extends Tree[Unit]
-  case class Variable[+T](id: Identifier) extends Tree[T]
+  sealed trait Variable[+T] extends Tree[T]
+  case class UserVariable[+T](id: Identifier) extends Variable[T]
   case class Loop(body: Tree[Any]) extends Tree[Nothing]
   case class Ite[+T](cond: Cond, thenn: Tree[T], elze: Option[Tree[T]]) extends Tree[T]
 
-  sealed trait ArithTree extends Tree[Int]
+  type ArithTree = Tree[Int]
   case class Add(lhs: ArithTree, rhs: Identifier) extends ArithTree
   case class Sub(lhs: ArithTree, rhs: Identifier) extends ArithTree
   case class BumpUp(id: Identifier) extends ArithTree
   case class BumpDown(id: Identifier) extends ArithTree
 
-  sealed trait Value extends ArithTree
-  case object Inbox extends Value
-  case object Outbox extends Value 
-  case object Uninitialized extends Value
-  case class Literal(i: Int) extends Value {
+  case object Inbox extends ArithTree
+  case class Outbox(v: ArithTree) extends Tree[Unit]
+  case object Uninitialized extends ArithTree
+  case class Literal(i: Int) extends ArithTree {
     require((-999 to 999).contains(i), s"Literal must be between -999 and 999; was ${i}.")
+
+    override def toString = i.toString
   }
 
   case class Cond(comparee: ArithTree, comparator: Comparator) extends Tree[Boolean]
   case object True extends Tree[Boolean]
 
+  private def getVarId(v: Variable[Int]): Identifier = v match {
+    case UserVariable(id) => id
+    case _ => throw Exception(s"Invalid use of built-in variable: ${v}")
+  }
 
   extension (lhs: ArithTree) {
-    def +(rhs: Identifier): ArithTree = Add(lhs, rhs)
-    def -(rhs: Identifier): ArithTree = Sub(lhs, rhs)
+    def +(rhs: Variable[Int]): ArithTree = Add(lhs, getVarId(rhs))
+    def -(rhs: Variable[Int]): ArithTree = Sub(lhs, getVarId(rhs))
 
     def ===(zero: 0): Cond = Cond(lhs, Comparator.Eq)
     def !==(zero: 0): Cond = Cond(lhs, Comparator.Neq)
     def <(zero: 0): Cond = Cond(lhs, Comparator.Less)
     def >=(zero: 0): Cond = Cond(lhs, Comparator.Geq)
 
-    // def ==(v: Value): Boolean = ???
-    // def !=(v: Value): Boolean = ???
-    // def <(v: Value): Boolean = ???
-    // def >=(v: Value): Boolean = ???
+    def ===(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) === 0
+    def !==(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) !== 0
+    def <(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) < 0
+    def >=(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) >= 0
   }
 
   extension (lhs: Variable[Int]) {
-    def +=(one: 1): ArithTree = BumpUp(lhs.id)
-    def -=(one: 1): ArithTree = BumpDown(lhs.id)
+    def +=(one: 1): ArithTree = BumpUp(getVarId(lhs))
+    def -=(one: 1): ArithTree = BumpDown(getVarId(lhs))
   }
 
-  val uninitialized: Value = Uninitialized
-  val inbox: Value = Inbox
-  var outbox: Value = Outbox
+  val uninitialized = Uninitialized
+  val inbox = Inbox
+  var outbox = new Variable[Int]{}
 }
 
 object MachineCode {
-  type Value = Language.Value
   import Language.Argument
 
   trait Instruction
@@ -84,10 +90,10 @@ object MachineCode {
   case class Sub(argument: Argument) extends Instruction
   case class BumpUp(argument: Argument) extends Instruction
   case class BumpDown(argument: Argument) extends Instruction
-  case class Jump(identifier: Identifier) extends Instruction
-  case class JumpZ(identifier: Identifier) extends Instruction
-  case class JumpN(identifier: Identifier) extends Instruction
-  case class Label(identifier: Identifier) extends Instruction
+  case class Jump(identifier: String) extends Instruction
+  case class JumpZ(identifier: String) extends Instruction
+  case class JumpN(identifier: String) extends Instruction
+  case class Label(identifier: String) extends Instruction
 
   type Program = Seq[Instruction]
 }

@@ -1,14 +1,15 @@
 import hrsm.Language.*
+import hrsm.hrprocessor.given
 
 // Statement: Sort (and output) every 3-uple from the input
 
 @main
 def year28Sorting: Unit =
   Year(28)(10){
-    while true do
-      var fst = inbox
-      var snd = inbox
-      var trd = inbox
+    while True do
+      var fst: Variable[Int] = inbox
+      var snd: Variable[Int] = inbox
+      var trd: Variable[Int] = inbox
 
       if snd < fst then
         val tmp = fst

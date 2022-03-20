@@ -1,13 +1,14 @@
 import hrsm.Language.*
+import hrsm.hrprocessor.given
 
 // Statement: Output the max of every pair of inputs
 
 @main
 def year14: Unit =
   Year(14)(3){
-    while true do
-      val f = inbox
-      val s = inbox
+    while True do
+      val f: Variable[Int] = inbox
+      val s: Variable[Int] = inbox
       if s < f then
         outbox = f
       else
