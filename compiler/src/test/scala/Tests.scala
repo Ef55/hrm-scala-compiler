@@ -1,7 +1,9 @@
-import org.scalatest._
-import flatspec._
+import org.scalatest.*
+import flatspec.*
 
 import hrsm.*
+import MachineCode.*
+import Arguments.*
 
 class Tests extends AnyFlatSpec {
   def chop(str: String) = str.stripMargin.drop(1)

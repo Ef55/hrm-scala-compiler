@@ -1,14 +1,12 @@
 package hrsm
 
-import Arguments.*
-import Language.*
+import hrsm.{Language as AST}
 import hrsm.{MachineCode as MC}
 
 import scala.collection.immutable.{Map => IMap}
 import scala.collection.mutable.{SortedSet, Map}
 
-def compile(code: AST.Tree)(config: Configuration): MC.Program = 
-
+def compile(code: AST.Tree[Any])(config: Configuration): MC.Program = 
   def createConstantsMap(mem: IMap[Int, Int]): Map[ConcreteValue, ConcreteValue] = 
     val r = Map.empty[ConcreteValue, ConcreteValue]
     config.init.foreach{(k, v) =>
@@ -48,7 +46,7 @@ def compile(code: AST.Tree)(config: Configuration): MC.Program =
       case Comparator.Eq | Comparator.Neq => MC.JumpZ(_)
       case Comparator.Less | Comparator.Geq => MC.JumpN(_)
 
-  def rec(code: AST.Tree): MC.Program = code match
+  def rec(code: AST.ArithTree): MC.Program = code match
     case AST.Sequence(nodes) => 
       memorySnapshot{
         nodes.flatMap(rec(_))

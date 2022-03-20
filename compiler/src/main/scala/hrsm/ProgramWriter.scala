@@ -1,7 +1,7 @@
 package hrsm
 
 import MachineCode.*
-import Arguments.*
+import Language.{Argument, Immediate, Indirect}
 
 import java.io.{File, FileWriter, BufferedWriter}
 

@@ -1,9 +1,8 @@
 package hrsm
 
-type Identifier = String
-object Arguments {
-  import Language.Value
+type Identifier = exproc.Identifier
 
+object Language {
   trait Argument
   case class Immediate(valueIndex: Value) extends Argument
   case class Indirect(addressIndex: Value) extends Argument
@@ -20,68 +19,61 @@ object Arguments {
       case Comparator.Neq => Comparator.Eq
       case Comparator.Less => Comparator.Geq
       case Comparator.Geq => Comparator.Less
-}
 
-object Language {
-  sealed trait Value {
+  sealed trait Tree[+T]
+  case class Sequence[+T](nodes: Seq[Tree[Any]], last: Tree[T]) extends Tree[T]
+  case class Define[+T](id: Identifier, init: Option[Tree[T]]) extends Tree[Unit]
+  case class Assign[+T](id: Identifier, expr: Tree[T]) extends Tree[Unit]
+  case class Variable[+T](id: Identifier) extends Tree[T]
+  case class Loop(body: Tree[Any]) extends Tree[Nothing]
+  case class Ite[+T](cond: Cond, thenn: Tree[T], elze: Option[Tree[T]]) extends Tree[T]
 
-    def +(v: Value): Value = ???
-    def -(v: Value): Value = ???
+  sealed trait ArithTree extends Tree[Int]
+  case class Add(lhs: ArithTree, rhs: Identifier) extends ArithTree
+  case class Sub(lhs: ArithTree, rhs: Identifier) extends ArithTree
+  case class BumpUp(id: Identifier) extends ArithTree
+  case class BumpDown(id: Identifier) extends ArithTree
 
-    def +=(one: 1): Value = ???
-    def -=(one: 1): Value = ???
-
-    def ==(zero: 0): Boolean = ???
-    def !=(zero: 0): Boolean = ???
-    def <(zero: 0): Boolean = ???
-    def >=(zero: 0): Boolean = ???
-
-    def ==(v: Value): Boolean = ???
-    def !=(v: Value): Boolean = ???
-    def <(v: Value): Boolean = ???
-    def >=(v: Value): Boolean = ???
-
-    override def toString: String = ???
+  sealed trait Value extends ArithTree
+  case object Inbox extends Value
+  case object Outbox extends Value 
+  case object Uninitialized extends Value
+  case class Literal(i: Int) extends Value {
+    require((-999 to 999).contains(i), s"Literal must be between -999 and 999; was ${i}.")
   }
 
-  sealed case class ConcreteValue(i: Int) extends Value {
-    require((-999 to 999).contains(i))
+  case class Cond(comparee: ArithTree, comparator: Comparator) extends Tree[Boolean]
+  case object True extends Tree[Boolean]
 
-    override def toString: String = i.toString
+
+  extension (lhs: ArithTree) {
+    def +(rhs: Identifier): ArithTree = Add(lhs, rhs)
+    def -(rhs: Identifier): ArithTree = Sub(lhs, rhs)
+
+    def ===(zero: 0): Cond = Cond(lhs, Comparator.Eq)
+    def !==(zero: 0): Cond = Cond(lhs, Comparator.Neq)
+    def <(zero: 0): Cond = Cond(lhs, Comparator.Less)
+    def >=(zero: 0): Cond = Cond(lhs, Comparator.Geq)
+
+    // def ==(v: Value): Boolean = ???
+    // def !=(v: Value): Boolean = ???
+    // def <(v: Value): Boolean = ???
+    // def >=(v: Value): Boolean = ???
   }
 
-  given intToValue: Conversion[Int, Value] with
-    def apply(i: Int): Value = ???
+  extension (lhs: Variable[Int]) {
+    def +=(one: 1): ArithTree = BumpUp(lhs.id)
+    def -=(one: 1): ArithTree = BumpDown(lhs.id)
+  }
 
-  val uninitialized: Value = ???
-  val inbox: Value = ???
-  var outbox: Value = ???
-}
-
-
-object AST {
-  type Value = Language.Value
-  import Arguments.*
-
-  sealed trait Tree
-  case class Sequence(nodes: Seq[Tree]) extends Tree
-  case class Define(id: Identifier, init: Option[Tree]) extends Tree
-  case class Assign(id: Identifier, expr: Tree) extends Tree
-  case object Inbox extends Tree
-  case class Outbox(expr: Tree) extends Tree
-  case class Variable(id: Identifier) extends Tree
-  case class Constant(i: Language.ConcreteValue) extends Tree
-  case class Add(lhs: Tree, rhs: Identifier) extends Tree
-  case class Sub(lhs: Tree, rhs: Identifier) extends Tree
-  case class BumpUp(id: Identifier) extends Tree
-  case class BumpDown(id: Identifier) extends Tree
-  case class Loop(body: Tree) extends Tree
-  case class Ite(cond: Tree, comp: Comparator, thenn: Tree, elze: Option[Tree]) extends Tree
+  val uninitialized: Value = Uninitialized
+  val inbox: Value = Inbox
+  var outbox: Value = Outbox
 }
 
 object MachineCode {
-  type Value = AST.Value
-  import Arguments.*
+  type Value = Language.Value
+  import Language.Argument
 
   trait Instruction
   case object Inbox extends Instruction
