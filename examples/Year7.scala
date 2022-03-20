@@ -1,5 +1,4 @@
-import hrsm.Language.*
-import hrsm.hrprocessor.given
+import hrsm.Language.{*, given}
 
 // Statement: Output every non-zero from the input
 

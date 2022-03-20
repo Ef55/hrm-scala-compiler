@@ -1,5 +1,4 @@
-import hrsm.Language.*
-import hrsm.hrprocessor.given
+import hrsm.Language.{*, given}
 
 // Statement: Output every input
 // Solve both optimization challenges

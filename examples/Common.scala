@@ -2,11 +2,8 @@ import hrsm.*
 
 import hrsm.MachineCode.Label
 import java.io.*
-import scala.collection.immutable.Map
-import scala.compiletime.codeOf
 
-def memory(ls: (Int, Int)*) = Map.from[Int, Int](ls)
-
+export hrsm.memory
 
 object Year {
   val outPath = File(s"examples/output/")

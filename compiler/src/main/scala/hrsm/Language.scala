@@ -76,6 +76,8 @@ object Language {
   val uninitialized = Uninitialized
   val inbox = Inbox
   var outbox = new Variable[Int]{}
+
+  export hrprocessor.given
 }
 
 object MachineCode {
@@ -96,4 +98,8 @@ object MachineCode {
   case class Label(identifier: String) extends Instruction
 
   type Program = Seq[Instruction]
+
+  extension (program: Program)
+    def pretty: String = program.map(_.toText).mkString("\n")
+
 }

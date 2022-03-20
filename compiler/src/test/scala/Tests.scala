@@ -2,13 +2,15 @@ import org.scalatest.*
 import flatspec.*
 
 import hrsm.*
-import Language.{Immediate, Indirect, Literal}
-import MachineCode.*
+
+import scala.io.Source
 
 class Tests extends AnyFlatSpec {
   def chop(str: String) = str.stripMargin.drop(1)
 
   "Instructions" should "be printed correctly" in {
+    import Language.{Tree, Immediate, Indirect, Literal}
+    import MachineCode.*
     val expected = chop("""
       |    INBOX
       |    OUTBOX
@@ -38,7 +40,45 @@ class Tests extends AnyFlatSpec {
       Label("lbl"),
     )
 
-    assertResult(expected)(printProgram(program))
+    assertResult(expected)(program.pretty)
+  }
+
+  import Language.{*, given}
+  import MachineCode.Program
+
+  val expectedPath = "compiler/src/test/scala/expected"
+
+  inline def yearTest(year: Year): Unit = {
+    val result = year.code.pretty
+
+    val expected = Source.fromFile(s"${expectedPath}/year${year.name}.asm")
+      .getLines.mkString("\n")
+
+    assertResult(expected)(result)
+  }
+
+  "Year 2" should "yield expected code" in {
+    yearTest(year2)
+  }
+
+  "Year 6" should "yield expected code" in {
+    yearTest(year6)
+  }
+
+  "Year 9" should "yield expected code" in {
+    yearTest(year9)
+  }
+
+  "Year 12" should "yield expected code" in {
+    yearTest(year12)
+  }
+
+  "Year 17" should "yield expected code" in {
+    yearTest(year17)
+  }
+
+  "Year 28" should "yield expected code" in {
+    yearTest(year28)
   }
 
 }

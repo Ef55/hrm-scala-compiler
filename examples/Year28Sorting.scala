@@ -1,5 +1,4 @@
-import hrsm.Language.*
-import hrsm.hrprocessor.given
+import hrsm.Language.{*, given}
 
 // Statement: Sort (and output) every 3-uple from the input
 

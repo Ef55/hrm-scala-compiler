@@ -31,11 +31,8 @@ extension (instr: Instruction) {
   }
 }
 
-def printProgram(program: Program): String =
-  program.map(_.toText).mkString("\n")
-
 def write(file: File, program: Program) =
   val bw = new BufferedWriter(new FileWriter(file))
-  bw.write(printProgram(program))
+  bw.write(program.pretty)
   bw.write("\n")
   bw.close()
