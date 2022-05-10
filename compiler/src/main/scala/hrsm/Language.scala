@@ -1,6 +1,6 @@
 package hrsm
 
-type Identifier = exproc.Identifier
+type Identifier = Int
 
 object Language {
   trait Argument
@@ -37,6 +37,7 @@ object Language {
   case class BumpDown(id: Identifier) extends ArithTree
 
   case object Inbox extends ArithTree
+  case object OutboxVar extends Variable[Int]
   case class Outbox(v: ArithTree) extends Tree[Unit]
   case object Uninitialized extends ArithTree
   case class Literal(i: Int) extends ArithTree {
@@ -48,36 +49,7 @@ object Language {
   case class Cond(comparee: ArithTree, comparator: Comparator) extends Tree[Boolean]
   case object True extends Tree[Boolean]
 
-  private def getVarId(v: Variable[Int]): Identifier = v match {
-    case UserVariable(id) => id
-    case _ => throw Exception(s"Invalid use of built-in variable: ${v}")
-  }
-
-  extension (lhs: ArithTree) {
-    def +(rhs: Variable[Int]): ArithTree = Add(lhs, getVarId(rhs))
-    def -(rhs: Variable[Int]): ArithTree = Sub(lhs, getVarId(rhs))
-
-    def ===(zero: 0): Cond = Cond(lhs, Comparator.Eq)
-    def !==(zero: 0): Cond = Cond(lhs, Comparator.Neq)
-    def <(zero: 0): Cond = Cond(lhs, Comparator.Less)
-    def >=(zero: 0): Cond = Cond(lhs, Comparator.Geq)
-
-    def ===(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) === 0
-    def !==(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) !== 0
-    def <(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) < 0
-    def >=(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) >= 0
-  }
-
-  extension (lhs: Variable[Int]) {
-    def +=(one: 1): ArithTree = BumpUp(getVarId(lhs))
-    def -=(one: 1): ArithTree = BumpDown(getVarId(lhs))
-  }
-
-  val uninitialized = Uninitialized
-  val inbox = Inbox
-  var outbox = new Variable[Int]{}
-
-  export hrprocessor.given
+  
 }
 
 object MachineCode {

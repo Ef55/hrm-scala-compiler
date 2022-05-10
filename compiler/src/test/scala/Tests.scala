@@ -73,12 +73,12 @@ class Tests extends AnyFlatSpec {
     yearTest(year12)
   }
 
-  "Year 17" should "yield expected code" in {
-    yearTest(year17)
-  }
+  // "Year 17" should "yield expected code" in {
+  //   yearTest(year17)
+  // }
 
-  "Year 28" should "yield expected code" in {
-    yearTest(year28)
-  }
+  // "Year 28" should "yield expected code" in {
+  //   yearTest(year28)
+  // }
 
 }
