@@ -6,7 +6,7 @@ import exproc.{ Identifier as _, * }
 
 import scala.compiletime.error
 
-object hrprocessor extends exproc.AstBuilder[Tree] {
+object hrprocessor extends exproc.AstBuilder[Tree] with exproc.ControlFlow[Tree] {
   type Variable[T] = Language.Variable[T]
 
   private def getVarId(v: Variable[Int]): Identifier = (v: Variable[Int]) match {
@@ -14,6 +14,8 @@ object hrprocessor extends exproc.AstBuilder[Tree] {
     case OutboxVar => throw new RuntimeException("Invalid use of outbox")
   }
   
+  given ImplicitElse[Unit] = ImplicitElse(Nop)
+
   extension (lhs: ArithTree) {
     def +(rhs: Variable[Int]): ArithTree = Add(lhs, getVarId(rhs))
     def -(rhs: Variable[Int]): ArithTree = Sub(lhs, getVarId(rhs))
@@ -28,15 +30,6 @@ object hrprocessor extends exproc.AstBuilder[Tree] {
     def <(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) < 0
     def >=(rhs: Variable[Int]): Cond = Sub(lhs, getVarId(rhs)) >= 0
   }
-
-  inline def If[T](inline cond: Tree[Boolean])(inline thenn: Tree[T])(inline elze: Tree[T]) =
-    hrprocessor.ifThenElse(cond, thenn, elze)
-
-  inline def If[T](inline cond: Tree[Boolean])(inline thenn: Tree[T]) =
-    hrprocessor.ifThenElse(cond, thenn, Nop)
-
-  inline def While(inline cond: Tree[Boolean])(inline body: Tree[?]) =
-    hrprocessor.whileLoop(cond, body)
 
   given autoConst[T]: Conversion[T, Tree[T]] with 
     def apply(t: T) = constant(t)
@@ -61,7 +54,7 @@ object hrprocessor extends exproc.AstBuilder[Tree] {
 
   override inline def initialize[T](inline va: Variable[T], inline init: Tree[T]): Tree[Unit] = {
     val v = va.asInstanceOf[UserVariable[T]]
-    init match {
+    (init: Tree[T]) match {
       case Uninitialized => Define(v.id, None)
       case _ => Define(v.id, Some(init))
     }
@@ -86,13 +79,13 @@ object hrprocessor extends exproc.AstBuilder[Tree] {
     case (l, r) => Sequence(Seq(l), r)
 
 
-  def ifThenElse[T](cond: Tree[Boolean], thenn: Tree[T], elze: Tree[T]): Tree[T] = cond match {
+  override inline def ifThenElse[T](inline cond: Tree[Boolean], inline thenn: Tree[T], inline elze: Tree[T]): Tree[T] = (cond: Tree[Boolean]) match {
     case cnd: Cond => Ite(cnd, thenn, Some(elze))
     case True => thenn
     case _ => throw new RuntimeException(s"Unsupported condition: ${cond}")
   }
 
-  def whileLoop(cond: Tree[Boolean], body: Tree[Any]): Tree[Unit] = cond match {
+  override inline def whileLoop[T](inline cond: Tree[Boolean], inline body: Tree[T]): Tree[Unit] = (cond: Tree[Boolean]) match {
     case cnd: Cond => ???
     case True => Loop(body)
     case _ => throw new RuntimeException(s"Unsupported condition: ${cond}")

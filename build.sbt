@@ -14,7 +14,7 @@ lazy val compiler = project
   .settings(
     name := "compiler",
 
-    libraryDependencies += "expressions-processor" %% "expressions-processor" % "0.2.0",
+    libraryDependencies += "expressions-processor" %% "expressions-processor" % "0.2.1",
 
     libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.11",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.11" % "test",
